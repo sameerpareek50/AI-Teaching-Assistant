@@ -1,0 +1,29 @@
+def create_embedding(text_list):
+#     # https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
+#     r = requests.post("http://localhost:11434/api/embed", json={
+#         "model": "bge-m3",
+#         "input": text_list
+#     })
+
+#     embedding = r.json()["embeddings"] 
+#     return embedding
+
+
+# jsons = os.listdir("jsons")  # List all the jsons mtlb read kra
+# my_dicts = [] # khali list jisme sare chunks ka data hoga with embeddings
+# chunk_id = 0 # unique chunk id for each chunk
+
+# for json_file in jsons:                      # Loop through each json file
+#     with open(f"jsons/{json_file}") as f:
+#         content = json.load(f)               # Read the data of each json file aur unhe content naam k variable m lelo as a python dictionary jisme chunks aur text honge
+
+#     print(f"Creating Embeddings for {json_file}")
+#     embeddings = create_embedding([c['text'] for c in content['chunks']]) # ab har content variable k har chunk k har text ko lekr ek list of string bana lo and pass it to create_embedding function
+#     # print(embeddings) # ye embeddings ki list dega jisme har chunk k corresponding embedding hoga
+       
+#     for i, chunk in enumerate(content['chunks']):
+#         chunk['chunk_id'] = chunk_id                   # har chunk k sath unique chunk id add krdo in content variable
+#         chunk['embedding'] = embeddings[i]             # har chunk k sath uska corresponding embedding add krdo in content variable
+#         chunk_id += 1
+#         my_dicts.append(chunk)                 # ab content variable m pehle data tha hi aur ab chunk_id aur embeddings bhi add ho gyi so converted this into a dataframe
+# # print(my_dicts)
