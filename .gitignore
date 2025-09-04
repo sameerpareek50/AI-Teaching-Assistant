@@ -1,3 +1,4 @@
 # Ignore entire videos and audios folders
 videos/
 audios/
+embeddings.joblib
