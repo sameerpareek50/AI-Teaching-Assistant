@@ -1,3 +1,5 @@
+# i used this script to create chunks from audio files using whisper and save them as json files with metadata
+
 import whisper
 import json
 import os
