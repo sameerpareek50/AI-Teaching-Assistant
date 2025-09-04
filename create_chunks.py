@@ -1,3 +1,5 @@
+# Step 2 : convert mp3 into chunks(texts) using whisper large-v2 model
+
 # i used this script to create chunks from audio files using whisper and save them as json files with metadata
 
 import whisper

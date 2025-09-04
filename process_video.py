@@ -1,4 +1,5 @@
-# Converts the videos to mp3 
+# Step 1 : 
+# Converts the videos to mp3 using FFmpeg and saves them in audios folder
 import os 
 import subprocess
 
