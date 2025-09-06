@@ -10,10 +10,10 @@ import joblib
 
 def create_embedding(text_list):
     # https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
-    r = requests.post("http://localhost:11434/api/embed", json={
+    r = requests.post("http://localhost:11434/api/embed", json={        # used for posting my request to ollama server
         "model": "bge-m3",
         "input": text_list
-    })
+    })  # this is saying ki hamara local jo ollama ka instance chl rha h usme bge-m3 ko use krke ye text_list ka embedding banao
 
     embedding = r.json()["embeddings"] 
     return embedding
@@ -28,10 +28,13 @@ for json_file in jsons:                      # Loop through each json file
         content = json.load(f)               # Read the data of each json file aur unhe content naam k variable m lelo as a python dictionary jisme chunks aur text honge
 
     print(f"Creating Embeddings for {json_file}")
-    embeddings = create_embedding([c['text'] for c in content['chunks']]) # ab har content variable k har chunk k har text ko lekr ek list of string bana lo and pass it to create_embedding function
+    embeddings = create_embedding([c['text'] for c in content['chunks']]) # ab har content variable k har chunk k har individual text ko lekr ek list of string bana lo and pass it to create_embedding function
+    # i made a list of lists here taaki har chunks k text ko ek sath pass krdu means whole video k saare text ek sath in list format for faster processing
+
     # print(embeddings) # ye embeddings ki list dega jisme har chunk k corresponding embedding hoga
        
-    for i, chunk in enumerate(content['chunks']):
+    for i, chunk in enumerate(content['chunks']): # enumerate is used to get index along with the chunk
+        
         chunk['chunk_id'] = chunk_id                   # har chunk k sath unique chunk id add krdo in content variable
         chunk['embedding'] = embeddings[i]             # har chunk k sath uska corresponding embedding add krdo in content variable
         chunk_id += 1
