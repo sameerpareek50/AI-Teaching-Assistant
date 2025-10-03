@@ -12,7 +12,7 @@ def create_embedding(text_list):
         "model": "bge-m3",
         "input": text_list
     })
-
+# used for embeddings
     embedding = r.json()["embeddings"] 
     return embedding
 

@@ -1,7 +1,9 @@
-For HTML, it's primarily taught in videos 1 and 3.
+In your Sigma web development course, CSS is introduced in several videos.
 
-In video 1, specifically from 0:15 to 0:20 (1515 seconds), the instructor briefly mentions learning HTML and JavaScript as part of their course. They also mention that only when they learn HTML will you understand how websites work.
+The first introduction of CSS is in video 14, where it's mentioned that "So, what is CSS?" (this starts at timestamp 257.6 seconds and ends at 259.6 seconds).
 
-Regarding video 3, which is at timestamp 234-236 (corresponding to minutes 3-4), it's an introduction to CSS where the instructor says "Like we were doing in our HTML course." This suggests that while not exclusively teaching HTML in this video, there might be some HTML concepts being touched upon.
+Additionally, the basics of how CSS is written are also covered in video 14 itself, starting from 48.52 seconds to 50.16 seconds.
 
-If you're interested in learning more about HTML from scratch, I'd recommend starting with video 1 and then moving on to video 3.
+Lastly, there's a mention that we will learn styling from CSS, but I couldn't pinpoint an exact timestamp for this information as it seems like a brief mention without specific details.
+
+For more in-depth knowledge about CSS and how it applies to web development, you can check out these videos again, or consider exploring other resources related to the topic.
