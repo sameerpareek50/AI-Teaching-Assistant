@@ -53,12 +53,12 @@ max_indx = similarities.argsort()[::-1][0:top_results]
 new_df = df.loc[max_indx] 
 # print(new_df[["title", "number", "text"]])
 
-prompt = f'''I am teaching web development in my Sigma web development course. Here are video subtitle chunks containing video title, video number, start time in seconds, end time in seconds, the text at that time:
+prompt = f'''You are an AI video assistant. Here are video transcript chunks containing video title, video number, start time in seconds, end time in seconds, and the text at that time:
 
 {new_df[["title", "number", "start", "end", "text"]].to_json(orient="records")}
 ---------------------------------
 "{incoming_query}"
-User asked this question related to the video chunks, you have to answer in a human way (dont mention the above format, its just for you) where and how much content is taught in which video (in which video and at what timestamp) and guide the user to go to that particular video. If user asks unrelated question, tell him that you can only answer questions related to the course
+User asked this question related to the video content. Answer in a helpful, human way — explain where and how much content is taught in which video (including video number and timestamp) and guide the user to the right video. If the question is unrelated to the indexed video content, let them know politely.
 '''
 with open("prompt.txt", "w") as f:
     f.write(prompt)

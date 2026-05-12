@@ -15,9 +15,8 @@ for audio in audios:
         number = audio.split("_")[0]
         title = audio.split("_")[1][:-4] # remove .mp3 extension
         print(number, title)
-        result = model.transcribe(audio = f"audios/{audio}", 
-        # result = model.transcribe(audio = f"audios/sample.mp3", 
-                              language="hi",
+        result = model.transcribe(audio = f"audios/{audio}",
+        # result = model.transcribe(audio = f"audios/sample.mp3",
                               task="translate",
                               word_timestamps=False )
         

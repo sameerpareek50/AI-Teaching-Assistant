@@ -1,0 +1,15 @@
+streamlit
+python-dotenv
+chromadb
+google-genai
+pandas
+numpy
+scikit-learn
+joblib
+openai-whisper
+plotly
+youtube-transcript-api
+yt-dlp
+sentence-transformers
+groq
+ollama

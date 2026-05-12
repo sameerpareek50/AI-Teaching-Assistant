@@ -2,3 +2,8 @@
 videos/
 audios/
 embeddings.joblib
+chroma_db/
+evaluation_results.json
+__pycache__/
+venv/
+.env
