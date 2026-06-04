@@ -19,7 +19,8 @@ st.set_page_config(
     page_title="AI Teaching Assistant | Videx",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={}
 )
 
 # --- Theme ---
@@ -28,56 +29,28 @@ t = get_theme()
 # --- Global CSS ---
 st.markdown(get_common_css(t) + f"""
 <style>
-    .hero-container {{
-        text-align: center; padding: 2rem 1rem 1rem;
-        animation: fadeInDown 0.8s ease;
+    [data-testid="stToolbarActions"] {{ display: none !important; }}
+
+    .welcome-container {{
+        text-align: center;
+        padding: 5rem 1rem 2rem;
+        animation: fadeIn 0.7s ease;
     }}
-    @keyframes fadeInDown {{
-        from {{ opacity: 0; transform: translateY(-20px); }}
+    @keyframes fadeIn {{
+        from {{ opacity: 0; transform: translateY(-12px); }}
         to {{ opacity: 1; transform: translateY(0); }}
     }}
-    .hero-title {{
-        font-size: 2.8rem; font-weight: 800;
+    .welcome-icon {{ font-size: 3.5rem; display: block; margin-bottom: 1.2rem; }}
+    .welcome-title {{
+        font-size: 3.4rem; font-weight: 800; letter-spacing: 3px;
         background: linear-gradient(135deg, {t['accent']} 0%, {t['accent2']} 50%, #f093fb 100%);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        letter-spacing: -0.5px;
+        margin-bottom: 0.6rem;
     }}
-    .hero-subtitle {{ font-size: 1.1rem; color: {t['text_secondary']}; font-weight: 300; }}
-
-    .metrics-row {{
-        display: flex; gap: 1rem; justify-content: center;
-        margin: 1.5rem 0; animation: fadeInUp 0.8s ease 0.2s both;
+    .welcome-tagline {{
+        font-size: 1rem; color: {t['text_secondary']}; font-weight: 300;
+        letter-spacing: 0.5px; margin-bottom: 2.8rem;
     }}
-    @keyframes fadeInUp {{
-        from {{ opacity: 0; transform: translateY(20px); }}
-        to {{ opacity: 1; transform: translateY(0); }}
-    }}
-    @keyframes countUp {{
-        from {{ opacity: 0; transform: scale(0.5); }}
-        to {{ opacity: 1; transform: scale(1); }}
-    }}
-    .metric-card {{
-        background: {t['bg_card']}; border: 1px solid {t['border_card']};
-        border-radius: 16px; padding: 1.2rem 2rem; text-align: center;
-        backdrop-filter: blur(10px); transition: all 0.3s ease;
-        flex: 1; max-width: 220px;
-    }}
-    .metric-card:hover {{
-        transform: translateY(-4px);
-        border-color: rgba(102, 126, 234, 0.4);
-        box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
-    }}
-    .metric-value {{
-        font-size: 1.8rem; font-weight: 700;
-        background: linear-gradient(135deg, {t['accent']}, {t['accent2']});
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        animation: countUp 0.6s ease both;
-    }}
-    .metric-label {{
-        font-size: 0.75rem; color: {t['text_secondary']};
-        text-transform: uppercase; letter-spacing: 1.5px; margin-top: 0.3rem; font-weight: 500;
-    }}
-
     .source-card {{
         background: {t['card_gradient']};
         border: 1px solid rgba(102,126,234,0.2); padding: 1rem 1.3rem;
@@ -99,13 +72,8 @@ st.markdown(get_common_css(t) + f"""
         background: {t['success_bg']}; border-color: {t['success_border']}; color: {t['success']};
     }}
 
-    .stChatMessage {{ border-radius: 14px; animation: fadeInUp 0.4s ease; }}
+    .stChatMessage {{ border-radius: 14px; }}
     [data-testid="stChatInput"] textarea {{ border-radius: 14px !important; }}
-
-    .custom-divider {{
-        height: 1px; background: linear-gradient(90deg, transparent, rgba(102,126,234,0.3), transparent);
-        margin: 1.5rem 0; border: none;
-    }}
 
     .perf-bar {{
         background: {t['bg_card']}; border: 1px solid {t['border_card']};
@@ -126,16 +94,6 @@ st.markdown(get_common_css(t) + f"""
         width: 8px; height: 8px; background: {t['success']}; border-radius: 50%;
         display: inline-block; animation: pulse 2s infinite; margin-right: 6px;
     }}
-
-    .demo-banner {{
-        background: linear-gradient(135deg, rgba(240,147,251,0.12), rgba(102,126,234,0.12));
-        border: 1px solid rgba(240,147,251,0.25); border-radius: 14px;
-        padding: 1.2rem; margin: 1rem 0; text-align: center;
-    }}
-    .demo-step {{
-        color: {t['text_primary']}; font-size: 1rem; font-weight: 600; margin-bottom: 0.3rem;
-    }}
-    .demo-desc {{ color: {t['text_secondary']}; font-size: 0.85rem; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -261,120 +219,23 @@ with st.sidebar:
 
 # --- Main Content ---
 
-# Hero
-st.markdown("""
-<div class="hero-container">
-    <div class="hero-title">AI Teaching Assistant</div>
-    <div class="hero-subtitle">Ask anything about your indexed video content</div>
-</div>
-""", unsafe_allow_html=True)
-
 # Load ChromaDB
 try:
     collection = load_chromadb()
-    total_chunks = collection.count()
 except Exception as e:
     st.error(f"Could not load ChromaDB. Run `python 5_migrate_to_chromadb.py` first.\n\nError: {e}")
     st.stop()
 
-# Count unique videos from metadata
-try:
-    all_meta = collection.get(include=["metadatas"])
-    unique_videos = len(set(m.get("title", "") for m in all_meta["metadatas"]))
-except:
-    unique_videos = "—"
+suggestion_clicked = None
 
-# Metrics with animated counter effect
-st.markdown(f"""
-<div class="metrics-row">
-    <div class="metric-card">
-        <div class="metric-value" style="animation-delay:0.1s;">{total_chunks:,}</div>
-        <div class="metric-label">Video Chunks</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-value" style="animation-delay:0.2s;">{unique_videos}</div>
-        <div class="metric-label">Videos Indexed</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-value" style="animation-delay:0.3s;">RAG</div>
-        <div class="metric-label">Powered By</div>
-    </div>
-    <div class="metric-card">
-        <div class="metric-value" style="animation-delay:0.4s;">Gemini</div>
-        <div class="metric-label">LLM Engine</div>
-    </div>
+# Welcome header — always visible, sits above chat history
+st.markdown("""
+<div class="welcome-container">
+    <span class="welcome-icon">🎓</span>
+    <div class="welcome-title">VIDEX</div>
+    <div class="welcome-tagline">Ask anything about your course videos</div>
 </div>
 """, unsafe_allow_html=True)
-
-# Suggested questions (generic)
-SUGGESTIONS = [
-    "What topics are covered?",
-    "Summarize the key concepts",
-    "Give me an overview",
-    "What was discussed first?",
-]
-
-st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
-# Quick suggestion buttons
-cols = st.columns(len(SUGGESTIONS))
-suggestion_clicked = None
-for i, sug in enumerate(SUGGESTIONS):
-    with cols[i]:
-        if st.button(sug, key=f"sug_{i}", use_container_width=True):
-            suggestion_clicked = sug
-
-st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
-
-# --- Live Demo Mode ---
-if "demo_mode" not in st.session_state:
-    st.session_state.demo_mode = False
-if "demo_step" not in st.session_state:
-    st.session_state.demo_step = 0
-
-DEMO_QUESTIONS = [
-    ("What topics are covered in the videos?", "General overview question"),
-    ("Tell me more about the first topic mentioned", "Follow-up question (conversation memory)"),
-    ("Which video should I watch to learn about that?", "Navigation question"),
-]
-
-demo_col1, demo_col2 = st.columns([1, 5])
-with demo_col1:
-    if st.button("Live Demo", type="secondary", use_container_width=True):
-        st.session_state.demo_mode = not st.session_state.demo_mode
-        st.session_state.demo_step = 0
-        st.rerun()
-
-if st.session_state.demo_mode:
-    step = st.session_state.demo_step
-    if step < len(DEMO_QUESTIONS):
-        q, desc = DEMO_QUESTIONS[step]
-        st.markdown(f"""
-        <div class="demo-banner">
-            <div class="demo-step">Demo Step {step + 1}/{len(DEMO_QUESTIONS)}: {desc}</div>
-            <div class="demo-desc">Question: "{q}"</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        dc1, dc2, dc3 = st.columns([1, 1, 4])
-        with dc1:
-            if st.button("Run This Question", type="primary"):
-                suggestion_clicked = q
-                st.session_state.demo_step += 1
-        with dc2:
-            if st.button("Skip Demo"):
-                st.session_state.demo_mode = False
-                st.rerun()
-    else:
-        st.markdown("""
-        <div class="demo-banner">
-            <div class="demo-step">Demo Complete!</div>
-            <div class="demo-desc">All demo steps finished. The system supports follow-up questions via conversation memory.</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Exit Demo"):
-            st.session_state.demo_mode = False
-            st.rerun()
 
 # --- Chat Interface ---
 if "messages" not in st.session_state:
