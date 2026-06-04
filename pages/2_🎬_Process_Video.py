@@ -569,6 +569,106 @@ Transcript:
     return generate(prompt)
 
 
+def generate_srt(segments):
+    """Convert transcript segments to SRT subtitle format.
+    Long segments are split by sentence so subtitles change throughout the video.
+    """
+    import re
+
+    MAX_SUB_DURATION = 4.0  # max seconds per subtitle entry
+
+    def fmt_time(seconds):
+        seconds = max(0.0, float(seconds))
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = int(seconds % 60)
+        ms = int(round((seconds % 1) * 1000))
+        return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+    def wrap_line(text, max_chars=50, max_lines=2):
+        words = text.split()
+        lines, current = [], ""
+        for word in words:
+            if current and len(current) + 1 + len(word) > max_chars:
+                lines.append(current)
+                if len(lines) >= max_lines:
+                    break
+                current = word
+            else:
+                current = (current + " " + word).strip()
+        if current and len(lines) < max_lines:
+            lines.append(current)
+        return "\n".join(lines) if lines else text
+
+    def split_segment(seg):
+        """Split a long segment into sentence-sized subtitle entries."""
+        text = seg["text"].strip()
+        start = float(seg["start"])
+        end = float(seg["end"])
+        duration = end - start
+
+        # Split into sentences
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+|\n+', text) if s.strip()]
+        if not sentences:
+            sentences = [text]
+
+        # If short enough already, return as-is
+        if duration <= MAX_SUB_DURATION and len(sentences) <= 1:
+            return [{"text": text, "start": start, "end": max(end, start + 0.5)}]
+
+        # Distribute duration evenly across sentences
+        time_per = duration / len(sentences)
+        result = []
+        for i, sentence in enumerate(sentences):
+            s = start + i * time_per
+            e = min(s + time_per, end)
+            if e <= s:
+                e = s + 0.5
+            result.append({"text": sentence, "start": s, "end": e})
+        return result
+
+    # Expand all segments into sentence-level entries
+    expanded = []
+    for seg in segments:
+        expanded.extend(split_segment(seg))
+
+    # Render as SRT
+    blocks = []
+    for i, seg in enumerate(expanded, 1):
+        text = wrap_line(seg["text"])
+        if text:
+            blocks.append(f"{i}\n{fmt_time(seg['start'])} --> {fmt_time(seg['end'])}\n{text}")
+
+    return "\n\n".join(blocks) + "\n"
+
+
+def burn_subtitles(video_path, srt_path, output_path):
+    """Burn SRT subtitles into a video using imageio_ffmpeg (has libass/subtitles filter built in)."""
+    import imageio_ffmpeg
+    ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+    srt_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
+    cmd = [
+        ffmpeg_bin, "-y",
+        "-i", video_path,
+        "-vf", (
+            f"subtitles='{srt_escaped}':force_style='"
+            "FontName=Arial,FontSize=14,"
+            "PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,"
+            "BackColour=&H80000000,BorderStyle=3,"
+            "Outline=1,Shadow=0,Alignment=2,MarginV=15'"
+        ),
+        "-c:v", "libx264",
+        "-crf", "23",
+        "-preset", "fast",
+        "-c:a", "aac",
+        output_path
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        raise Exception(f"FFmpeg error: {result.stderr[-500:]}")
+    return output_path
+
+
 def check_video_exists(video_id):
     """Check if a YouTube video is already indexed in ChromaDB.
     Returns (exists, title, chunks, full_text) or (False, None, None, None)."""
@@ -603,7 +703,7 @@ def check_video_exists(video_id):
     return False, None, None, None
 
 
-def add_to_chromadb(video_id, title, merged_chunks):
+def add_to_chromadb(video_id, title, merged_chunks, source="youtube"):
     """Add processed video chunks to ChromaDB."""
     client = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_collection("video_chunks")
@@ -623,7 +723,7 @@ def add_to_chromadb(video_id, title, merged_chunks):
             "start": float(chunk["start"]),
             "end": float(chunk["end"]),
             "chunk_id": chunk_id,
-            "source": "youtube"
+            "source": source
         })
 
     collection.add(ids=ids, documents=texts, metadatas=metadatas)
@@ -650,6 +750,7 @@ tab_youtube, tab_upload = st.tabs(["YouTube URL", "Upload Audio/Video File"])
 url = None
 uploaded_file = None
 process_btn = False
+generate_subtitles_cb = False  # safe default before tab renders
 
 with tab_youtube:
     url = st.text_input(
@@ -676,6 +777,16 @@ with tab_upload:
         help="Upload any audio/video file — Gemini AI will transcribe it"
     )
     upload_title = st.text_input("Video/Lecture Title", placeholder="e.g., Machine Learning Lecture 1")
+
+    # Subtitle checkbox — only for video files, not audio-only
+    _upload_ext = uploaded_file.name.split('.')[-1].lower() if uploaded_file else ""
+    _is_video_upload = _upload_ext in ("mp4", "webm", "mkv", "avi", "mov")
+    if uploaded_file and _is_video_upload:
+        generate_subtitles_cb = st.checkbox(
+            "Generate subtitled video",
+            help="Burns the transcript as subtitles into a downloadable copy of your video"
+        )
+
     col3, col4 = st.columns([1, 5])
     with col3:
         upload_btn = st.button("Process Uploaded File", type="primary", use_container_width=True)
@@ -688,19 +799,23 @@ with tab_upload:
 
 # --- Process uploaded file ---
 if upload_btn and uploaded_file:
+    generate_subtitles = generate_subtitles_cb  # capture before rerun
+    total_steps = 5 if generate_subtitles else 4
+
     step1_status = st.empty()
-    step1_status.info("Step 1/4: Processing uploaded file...")
+    step1_status.info(f"Step 1/{total_steps}: Processing uploaded file...")
 
     from gemini_helper import groq_transcribe, is_transcription_useful, generate_with_file, describe_video_frames
 
     try:
         start_time = time.time()
-        with tempfile.NamedTemporaryFile(suffix=f".{uploaded_file.name.split('.')[-1]}", delete=False) as tmp:
-            tmp.write(uploaded_file.read())
+        file_bytes = uploaded_file.read()  # keep bytes for subtitle burning later
+        file_ext = uploaded_file.name.split('.')[-1].lower()
+        with tempfile.NamedTemporaryFile(suffix=f".{file_ext}", delete=False) as tmp:
+            tmp.write(file_bytes)
             tmp_path = tmp.name
 
         file_size_mb = os.path.getsize(tmp_path) / (1024 * 1024)
-        file_ext = uploaded_file.name.split('.')[-1].lower()
         title = upload_title if upload_title else uploaded_file.name
         video_id = f"upload_{int(time.time())}"
         segments = None
@@ -710,12 +825,12 @@ if upload_btn and uploaded_file:
         no_speech_detected = False
         if file_size_mb <= 25:
             try:
-                step1_status.info(f"Step 1/4: Transcribing with Groq Whisper ({file_size_mb:.1f}MB)...")
+                step1_status.info(f"Step 1/{total_steps}: Transcribing with Groq Whisper ({file_size_mb:.1f}MB)...")
                 segments = groq_transcribe(tmp_path, translate=True)
                 if is_transcription_useful(segments):
                     method_label = "Groq Whisper (cloud)"
                 else:
-                    step1_status.info("Step 1/4: No speech detected — skipping to visual analysis...")
+                    step1_status.info(f"Step 1/{total_steps}: No speech detected — skipping to visual analysis...")
                     no_speech_detected = True
                     segments = None
             except Exception:
@@ -725,7 +840,7 @@ if upload_btn and uploaded_file:
         if segments is None and not no_speech_detected:
             # --- Try 2: Gemini audio ---
             try:
-                step1_status.info(f"Step 1/4: Trying Gemini audio transcription ({file_size_mb:.1f}MB)...")
+                step1_status.info(f"Step 1/{total_steps}: Trying Gemini audio transcription ({file_size_mb:.1f}MB)...")
                 response_text = generate_with_file(
                     tmp_path,
                     """Transcribe this audio into English text. Output ONLY a JSON array where each element has:
@@ -751,7 +866,7 @@ Output valid JSON only, no markdown or explanation."""
             # --- Try 3: Local Whisper ---
             if segments is None:
                 try:
-                    step1_status.info("Step 1/4: Trying local Whisper transcription...")
+                    step1_status.info(f"Step 1/{total_steps}: Trying local Whisper transcription...")
                     import whisper
                     whisper_model = whisper.load_model("base")
                     whisper_result = whisper_model.transcribe(tmp_path, task="translate", word_timestamps=False)
@@ -766,7 +881,7 @@ Output valid JSON only, no markdown or explanation."""
         # --- Try 4: Vision analysis (for videos with no speech) ---
         if segments is None and file_ext in ("mp4", "webm", "mkv", "avi", "mov"):
             try:
-                step1_status.info("Step 1/4: No speech detected. Analyzing video visually...")
+                step1_status.info(f"Step 1/{total_steps}: No speech detected. Analyzing video visually...")
                 result = describe_video_frames(tmp_path, "Describe what is shown in this video")
                 if isinstance(result, str):
                     result = json.loads(result)
@@ -778,54 +893,88 @@ Output valid JSON only, no markdown or explanation."""
 
         if segments is None:
             os.unlink(tmp_path)
-            step1_status.error("Step 1/4: All transcription methods failed. Try a different file.")
+            step1_status.error(f"Step 1/{total_steps}: All transcription methods failed. Try a different file.")
             st.stop()
 
         transcript_time = time.time() - start_time
         full_text = " ".join(s["text"].replace("\n", " ") for s in segments)
         os.unlink(tmp_path)
-        step1_status.success(f"Step 1/4: {len(segments)} segments via {method_label} ({transcript_time:.1f}s)")
+        step1_status.success(f"Step 1/{total_steps}: {len(segments)} segments via {method_label} ({transcript_time:.1f}s)")
 
     except Exception as e:
         try:
             os.unlink(tmp_path)
-        except:
+        except Exception:
             pass
         step1_status.error(f"Processing failed: {e}")
         st.stop()
 
-    # Continue to steps 2-4 (shared with YouTube path below)
-    process_btn = False  # Prevent YouTube path from running
+    # Prevent YouTube path from running
+    process_btn = False
 
     # Step 2: Merge
     step2_status = st.empty()
     merged = merge_segments(segments)
-    step2_status.success(f"Step 2/4: Created {len(merged)} semantic chunks ({len(segments)} -> {len(merged)})")
+    step2_status.success(f"Step 2/{total_steps}: Created {len(merged)} semantic chunks ({len(segments)} → {len(merged)})")
 
     # Step 3: Summary
     step3_status = st.empty()
-    step3_status.info("Step 3/4: Generating AI summary...")
+    step3_status.info(f"Step 3/{total_steps}: Generating AI summary...")
     try:
         summary_start = time.time()
         summary = generate_summary(full_text, title)
-        step3_status.success(f"Step 3/4: Summary generated ({time.time()-summary_start:.1f}s)")
-    except:
+        step3_status.success(f"Step 3/{total_steps}: Summary generated ({time.time()-summary_start:.1f}s)")
+    except Exception:
         summary = "Summary generation skipped (rate limit). Try again shortly."
-        step3_status.warning("Step 3/4: Summary skipped (rate limit)")
+        step3_status.warning(f"Step 3/{total_steps}: Summary skipped (rate limit)")
 
     # Step 4: Index
     step4_status = st.empty()
     try:
-        chunks_added = add_to_chromadb(video_id, title, merged)
-        step4_status.success(f"Step 4/4: Added {chunks_added} chunks to ChromaDB")
+        chunks_added = add_to_chromadb(video_id, title, merged, source="upload")
+        step4_status.success(f"Step 4/{total_steps}: Added {chunks_added} chunks to ChromaDB")
     except Exception as e:
         step4_status.error(f"Indexing failed: {e}")
         st.stop()
+
+    # Step 5: Generate subtitled video (only for video files when checkbox is checked)
+    subtitled_video_bytes = None
+    subtitle_filename = None
+    if generate_subtitles and file_ext in ("mp4", "webm", "mkv", "avi", "mov"):
+        import shutil
+        step5_status = st.empty()
+        step5_status.info("Step 5/5: Generating subtitled video (this may take a minute)...")
+        sub_tmpdir = tempfile.mkdtemp()
+        try:
+            orig_video = os.path.join(sub_tmpdir, f"input.{file_ext}")
+            with open(orig_video, "wb") as f:
+                f.write(file_bytes)
+
+            srt_content = generate_srt(segments)
+            srt_path = os.path.join(sub_tmpdir, "subs.srt")
+            with open(srt_path, "w", encoding="utf-8") as f:
+                f.write(srt_content)
+
+            output_path = os.path.join(sub_tmpdir, "subtitled.mp4")
+            burn_subtitles(orig_video, srt_path, output_path)
+
+            with open(output_path, "rb") as f:
+                subtitled_video_bytes = f.read()
+
+            size_mb = len(subtitled_video_bytes) / (1024 * 1024)
+            subtitle_filename = f"{title}_subtitled.mp4"
+            step5_status.success(f"Step 5/5: Subtitled video ready ({size_mb:.1f} MB)")
+        except Exception as e:
+            step5_status.error(f"Step 5/5: Subtitle generation failed — {e}")
+        finally:
+            shutil.rmtree(sub_tmpdir, ignore_errors=True)
 
     st.session_state.video_data = {
         "video_id": video_id, "segments": len(segments), "chunks": len(merged),
         "summary": summary, "full_text": full_text, "transcript_time": transcript_time,
         "method": method_label, "title": title,
+        "subtitled_video": subtitled_video_bytes,
+        "subtitle_filename": subtitle_filename,
     }
     st.session_state.process_state = "done"
     st.rerun()
@@ -1002,6 +1151,39 @@ if st.session_state.process_state == "done" and st.session_state.video_data:
     with col2:
         st.markdown("### AI Summary")
         st.markdown(f"""<div class="summary-box">{data['summary']}</div>""", unsafe_allow_html=True)
+
+    # Subtitled video section (only shown if generated)
+    if data.get("subtitled_video"):
+        st.markdown("---")
+        st.markdown(f"""
+        <div style="text-align:center; margin: 0.5rem 0 1rem;">
+            <span style="font-size:1.2rem; font-weight:700; color:{t['text_heading']};">Subtitled Video</span>
+            <p style="color:{t['text_secondary']}; font-size:0.85rem; margin-top:0.3rem;">
+                Your video with transcript subtitles burned in at the bottom
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        col_vid, col_dl = st.columns([3, 1])
+        with col_vid:
+            st.video(data["subtitled_video"])
+        with col_dl:
+            size_mb = len(data["subtitled_video"]) / (1024 * 1024)
+            st.markdown(f"""
+            <div style="background:{t['bg_card']};border:1px solid {t['border_card']};
+                border-radius:14px;padding:1.2rem;text-align:center;margin-bottom:0.8rem;">
+                <div style="font-size:1.8rem;">🎬</div>
+                <div style="color:{t['text_heading']};font-weight:600;margin:0.4rem 0;">Ready to Download</div>
+                <div style="color:{t['text_muted']};font-size:0.8rem;">{size_mb:.1f} MB &nbsp;·&nbsp; MP4</div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.download_button(
+                label="Download Subtitled Video",
+                data=data["subtitled_video"],
+                file_name=data.get("subtitle_filename", "subtitled_video.mp4"),
+                mime="video/mp4",
+                use_container_width=True,
+                type="primary",
+            )
 
     # Transcript preview
     st.markdown("---")

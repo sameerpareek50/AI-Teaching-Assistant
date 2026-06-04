@@ -13,3 +13,4 @@ yt-dlp
 sentence-transformers
 groq
 ollama
+moviepy==1.0.3

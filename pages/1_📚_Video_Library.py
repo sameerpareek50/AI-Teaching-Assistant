@@ -154,10 +154,11 @@ try:
 
     yt_videos = {}
     for i, meta in enumerate(all_data["metadatas"]):
-        if meta.get("source") == "youtube":
+        src = meta.get("source")
+        if src in ("youtube", "upload"):
             title = meta["title"]
             if title not in yt_videos:
-                yt_videos[title] = {"chunks": 0, "max_end": 0, "first_text": "", "number": meta.get("number", "YT"), "ids": []}
+                yt_videos[title] = {"chunks": 0, "max_end": 0, "first_text": "", "number": meta.get("number", "YT"), "ids": [], "source": src}
             yt_videos[title]["chunks"] += 1
             yt_videos[title]["ids"].append(all_data["ids"][i])
             end = meta.get("end", 0)
@@ -173,7 +174,7 @@ try:
                 "title": title,
                 "chunks": info["chunks"],
                 "duration": int(info["max_end"]) // 60,
-                "source": "youtube",
+                "source": info["source"],
                 "full_text_preview": info["first_text"],
                 "chroma_ids": info["ids"],
             })
@@ -241,6 +242,8 @@ for idx, v in enumerate(videos):
     source_badge = ""
     if v.get("source") == "youtube":
         source_badge = f'<span class="video-badge" style="background:{t["error_bg"]};border-color:{t["error_border"]};color:{t["error"]};">YouTube</span>'
+    elif v.get("source") == "upload":
+        source_badge = f'<span class="video-badge" style="background:{t["warning_bg"]};border-color:{t["warning_border"]};color:{t["warning"]};">Uploaded</span>'
     elif v.get("source") == "local":
         source_badge = f'<span class="video-badge" style="background:{t["success_bg"]};border-color:{t["success_border"]};color:{t["success"]};">Local</span>'
 
