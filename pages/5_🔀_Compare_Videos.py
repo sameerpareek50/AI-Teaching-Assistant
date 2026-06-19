@@ -21,13 +21,13 @@ page_css = f"""
     }}
     .compare-card h3 {{ color: {t['text_primary']} !important; margin-top: 0; }}
     .overlap-badge {{
-        display: inline-block; background: rgba(240,147,251,0.15);
-        border: 1px solid rgba(240,147,251,0.3); border-radius: 20px;
-        padding: 3px 12px; font-size: 0.8rem; color: #f093fb; margin: 0.2rem;
+        display: inline-block; background: rgba(59,130,246,0.12);
+        border: 1px solid rgba(59,130,246,0.3); border-radius: 20px;
+        padding: 3px 12px; font-size: 0.8rem; color: #60a5fa; margin: 0.2rem;
     }}
     .unique-badge-a {{
         display: inline-block; background: {t['code_bg']};
-        border: 1px solid rgba(102,126,234,0.3); border-radius: 20px;
+        border: 1px solid rgba(59,130,246,0.3); border-radius: 20px;
         padding: 3px 12px; font-size: 0.8rem; color: {t['text_heading']}; margin: 0.2rem;
     }}
     .unique-badge-b {{
@@ -43,8 +43,8 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']};">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">COMPARE VIDEOS</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">COMPARE VIDEOS</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -180,9 +180,9 @@ if st.session_state.comparison_result:
     st.markdown(f'<div style="text-align:center;">{overlap_html}</div>', unsafe_allow_html=True)
 
     # Recommendation
-    st.markdown(f"""<div class="compare-card" style="border-color:rgba(240,147,251,0.2); margin-top:1.5rem;">
+    st.markdown(f"""<div class="compare-card" style="border-color:rgba(59,130,246,0.2); margin-top:1.5rem;">
         <h3 style="color:{t['accent']} !important;">Recommendation</h3>
-        <p style="color:{t['text_sidebar']};">{r.get('recommendation', '')}</p>
+        <p style="color:{t['text_explanation']};">{r.get('recommendation', '')}</p>
     </div>""", unsafe_allow_html=True)
 
     if st.button("Clear Comparison"):

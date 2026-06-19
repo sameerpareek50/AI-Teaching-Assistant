@@ -10,7 +10,7 @@ import tempfile
 from youtube_transcript_api import YouTubeTranscriptApi
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from gemini_helper import generate, generate_with_file, describe_video_frames, get_client, MODELS, groq_transcribe, is_transcription_useful
+from gemini_helper import generate, generate_with_file, describe_video_frames, groq_transcribe, is_transcription_useful
 from theme import get_theme, get_common_css
 CHROMA_PATH = "./chroma_db"
 MERGE_SIZE = 5
@@ -148,23 +148,25 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']};">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">PROCESS VIDEO</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">PROCESS VIDEO</div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("## How it works")
     st.markdown("""
-    1. Paste any YouTube URL
-    2. Smart transcript extraction:
-       - English captions (instant)
-       - Auto-translate other languages
-       - AI audio transcription (fallback)
-    3. AI generates a summary
-    4. Content is indexed for search
-    5. Ask questions in Chat page
-    """)
+    <div style="color:#e2eeff; font-size:1rem; font-weight:700; margin-bottom:0.6rem;">How it works</div>
+    <div style="font-size:0.85rem; line-height:1.9;">
+        <div style="color:#b8d4f0; margin-bottom:0.3rem;">1. Paste any YouTube URL</div>
+        <div style="color:#b8d4f0; margin-bottom:0.2rem;">2. Smart transcript extraction:</div>
+        <div style="color:#7aa8cc; padding-left:1rem; margin-bottom:0.2rem;">· English captions (instant)</div>
+        <div style="color:#7aa8cc; padding-left:1rem; margin-bottom:0.2rem;">· Auto-translate other languages</div>
+        <div style="color:#7aa8cc; padding-left:1rem; margin-bottom:0.3rem;">· AI audio transcription (fallback)</div>
+        <div style="color:#b8d4f0; margin-bottom:0.3rem;">3. AI generates a summary</div>
+        <div style="color:#b8d4f0; margin-bottom:0.3rem;">4. Content is indexed for search</div>
+        <div style="color:#b8d4f0;">5. Ask questions in Chat page</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def extract_video_id(url):
@@ -382,163 +384,6 @@ Output valid JSON only, no markdown or explanation.""",
 
     error_lines = "\n".join(f"- {k}: {v}" for k, v in errors.items())
     raise Exception(f"All methods failed:\n{error_lines}\n\nMake sure the video exists and is accessible.")
-
-
-def transcribe_with_gemini(video_id, status_callback=None):
-    """Download audio from YouTube and transcribe using Gemini's audio capability."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        audio_path = os.path.join(tmpdir, "audio.mp3")
-
-        # Download audio using yt-dlp
-        if status_callback:
-            status_callback("Downloading audio from YouTube...")
-
-        result = subprocess.run([
-            PYTHON, "-m", "yt_dlp",
-            "--no-check-certificates",
-            "-x", "--audio-format", "mp3",
-            "--audio-quality", "5",  # Lower quality = smaller file = faster upload
-            "-o", audio_path,
-            f"https://www.youtube.com/watch?v={video_id}"
-        ], capture_output=True, text=True, timeout=120)
-
-        if not os.path.exists(audio_path):
-            # yt-dlp may add extension
-            for f in os.listdir(tmpdir):
-                if f.endswith(".mp3"):
-                    audio_path = os.path.join(tmpdir, f)
-                    break
-
-        if not os.path.exists(audio_path):
-            raise Exception(f"Audio download failed: {result.stderr[:200]}")
-
-        file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
-        if status_callback:
-            status_callback(f"Audio downloaded ({file_size_mb:.1f}MB). Transcribing with Gemini AI...")
-
-        # Upload to Gemini and transcribe
-        from gemini_helper import generate_with_file
-        response_text = generate_with_file(
-            audio_path,
-            """Transcribe this audio into English text. Output ONLY a JSON array where each element has:
-- "text": the transcribed sentence/phrase
-- "start": approximate start time in seconds
-- "end": approximate end time in seconds
-
-Group the transcript into segments of roughly 5-10 seconds each.
-Output valid JSON only, no markdown or explanation.""",
-            status_callback=status_callback
-        )
-
-        # Parse response
-        response_text = response_text.strip()
-        if response_text.startswith("```"):
-            response_text = re.sub(r'^```\w*\n?', '', response_text)
-            response_text = re.sub(r'\n?```$', '', response_text)
-
-        return json.loads(response_text)
-
-
-def extract_frames_and_describe(video_id, status_callback=None):
-    """Download video and use Gemini vision to directly analyze it.
-    Gemini natively accepts video files — no ffmpeg needed."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        video_path = os.path.join(tmpdir, "video.mp4")
-
-        if status_callback:
-            status_callback("Downloading video for visual analysis...")
-
-        result = subprocess.run([
-            PYTHON, "-m", "yt_dlp",
-            "--no-check-certificates",
-            "-f", "worst[ext=mp4]/worst",
-            "-o", video_path,
-            f"https://www.youtube.com/watch?v={video_id}"
-        ], capture_output=True, text=True, timeout=180)
-
-        if not os.path.exists(video_path):
-            for f in os.listdir(tmpdir):
-                if f.endswith((".mp4", ".webm", ".mkv")):
-                    video_path = os.path.join(tmpdir, f)
-                    break
-
-        if not os.path.exists(video_path):
-            raise Exception(f"Video download failed: {result.stderr[:200]}")
-
-        file_size_mb = os.path.getsize(video_path) / (1024 * 1024)
-        if status_callback:
-            status_callback(f"Video downloaded ({file_size_mb:.1f}MB). Analyzing with AI vision...")
-
-        gemini_prompt = """Watch this video carefully and describe what happens throughout.
-Focus on:
-- What is being shown (code, slides, diagrams, demos, UI, etc.)
-- Any text visible on screen
-- Key concepts or topics being demonstrated
-- Actions being performed
-- Any speech or narration (if present)
-
-Output ONLY a JSON array where each element represents a 10-15 second segment:
-[
-    {"text": "detailed description of what's happening", "start": start_seconds, "end": end_seconds}
-]
-
-Cover the entire video from start to finish. Output valid JSON only, no markdown."""
-
-        # Try Ollama Vision (local) first, then Gemini
-        result = describe_video_frames(video_path, gemini_prompt, status_callback=status_callback)
-
-        # If result is already a list (from Ollama), return directly
-        if isinstance(result, list):
-            if not result:
-                raise Exception("Vision model returned no descriptions")
-            return result
-
-        # If result is text (from Gemini), parse JSON
-        response_text = result.strip()
-        if response_text.startswith("```"):
-            response_text = re.sub(r'^```\w*\n?', '', response_text)
-            response_text = re.sub(r'\n?```$', '', response_text)
-
-        segments = json.loads(response_text)
-
-        if not segments:
-            raise Exception("Vision model returned no descriptions")
-
-        return segments
-
-
-def describe_uploaded_video(file_path, status_callback=None):
-    """Analyze an uploaded video file using AI vision.
-    Tries Ollama Vision (local) first, falls back to Gemini."""
-    if status_callback:
-        status_callback("Analyzing video with AI vision...")
-
-    gemini_prompt = """Watch this video carefully and describe what happens throughout.
-Focus on:
-- What is being shown (code, slides, diagrams, demos, UI, etc.)
-- Any text visible on screen
-- Key concepts or topics being demonstrated
-- Actions being performed
-- Any speech or narration (if present)
-
-Output ONLY a JSON array where each element represents a 10-15 second segment:
-[
-    {"text": "detailed description of what's happening", "start": start_seconds, "end": end_seconds}
-]
-
-Cover the entire video from start to finish. Output valid JSON only, no markdown."""
-
-    result = describe_video_frames(file_path, gemini_prompt, status_callback=status_callback)
-
-    if isinstance(result, list):
-        return result
-
-    response_text = result.strip()
-    if response_text.startswith("```"):
-        response_text = re.sub(r'^```\w*\n?', '', response_text)
-        response_text = re.sub(r'\n?```$', '', response_text)
-
-    return json.loads(response_text)
 
 
 def merge_segments(segments, merge_size=MERGE_SIZE):

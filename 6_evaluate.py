@@ -5,12 +5,15 @@
 
 import chromadb
 import json
+import os
 import sys
 import time
 from datetime import datetime
+from dotenv import load_dotenv
 from google import genai
 
-GEMINI_API_KEY = "AIzaSyAgGOmuCxNFv_5LrhW9bhzVgcRJZ4Hfzkg"
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LLM_MODEL = "gemini-2.5-flash"
 CHROMA_PATH = "./chroma_db"
 

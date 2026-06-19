@@ -7,3 +7,9 @@ evaluation_results.json
 __pycache__/
 venv/
 .env
+.DS_Store
+learner_data.json
+response.txt
+prompt.txt
+output.json
+*.pyc

@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from gemini_helper import generate
 from theme import get_theme, get_common_css
-CHROMA_PATH = "./chroma_db"
+CHROMA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chroma_db")
 
 st.set_page_config(page_title="Knowledge Graph | Videx", page_icon="🕸️", layout="wide")
 
@@ -22,8 +22,8 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']};">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">KNOWLEDGE GRAPH</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">KNOWLEDGE GRAPH</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -36,7 +36,7 @@ st.markdown("""
 
 
 # --- Dynamically build knowledge graph from all indexed videos ---
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=18000)
 def build_knowledge_graph():
     """Extract topics from ALL indexed videos using Gemini to build a knowledge graph."""
     try:
@@ -53,7 +53,7 @@ def build_knowledge_graph():
             videos[title].append(all_data["documents"][i])
 
         if not videos:
-            return [], []
+            return [], [], None
 
         # Build a combined content summary for Gemini
         video_summaries = []
@@ -95,12 +95,28 @@ Rules:
         edges = [(e["from"], e["to"], e.get("strength", 1)) for e in data.get("edges", [])]
         return nodes, edges
 
-    except Exception:
-        return [], []
+    except Exception as e:
+        return [], [], str(e)
 
+    return nodes, edges, None
+
+
+# --- Refresh button ---
+if st.button("🔄 Refresh Graph", help="Rebuild the graph from latest indexed videos"):
+    build_knowledge_graph.clear()
+    st.rerun()
 
 # --- Build full graph ---
-all_nodes, all_edges = build_knowledge_graph()
+result = build_knowledge_graph()
+if len(result) == 3:
+    all_nodes, all_edges, build_error = result
+else:
+    all_nodes, all_edges = result
+    build_error = None
+
+if build_error:
+    st.error(f"Failed to build knowledge graph: {build_error}")
+    st.stop()
 
 if not all_nodes:
     st.info("No videos indexed yet. Process some videos first to see the knowledge graph.")
@@ -108,7 +124,7 @@ if not all_nodes:
 
 st.markdown(f"""
 <div style="text-align:center; margin-bottom:1rem;">
-    <span style="background:{t['code_bg']}; border:1px solid rgba(102,126,234,0.3);
+    <span style="background:{t['code_bg']}; border:1px solid rgba(59,130,246,0.3);
         color:{t['accent']}; padding:4px 14px; border-radius:20px; font-size:0.85rem;">
         {len(all_nodes)} topics extracted from indexed videos
     </span>
@@ -150,7 +166,7 @@ for _ in range(50):
             positions[b] = (bx - fx, by - fy)
 
 # Dynamically assign colors to groups
-_palette = ["#f093fb", "#68d391", "#ea6666", "#667eea", "#f0c83c", "#c084fc", "#ffa500", "#38bdf8", "#fb923c", "#a78bfa"]
+_palette = ["#60a5fa", "#4ade80", "#f87171", "#3b82f6", "#fbbf24", "#93c5fd", "#ffa500", "#38bdf8", "#fb923c", "#bfdbfe"]
 group_colors = {g: _palette[i % len(_palette)] for i, g in enumerate(unique_groups)}
 
 # --- Build plotly figure ---
@@ -162,7 +178,7 @@ for edge in all_edges:
     if a in positions and b in positions:
         ax, ay = positions[a]
         bx, by = positions[b]
-        edge_color = f'rgba(102,126,234,{0.1 + w*0.1})'
+        edge_color = f'rgba(59,130,246,{0.1 + w*0.1})'
         fig.add_trace(go.Scatter(
             x=[ax, bx, None], y=[ay, by, None],
             mode='lines',
@@ -175,12 +191,12 @@ for node in all_nodes:
     if node["id"] not in positions:
         continue
     x, y = positions[node["id"]]
-    color = group_colors.get(node["group"], "#667eea")
+    color = group_colors.get(node["group"], "#3b82f6")
     fig.add_trace(go.Scatter(
         x=[x], y=[y],
         mode='markers+text',
-        marker=dict(size=node["size"], color=color, opacity=0.85,
-                    line=dict(width=2, color='rgba(255,255,255,0.2)')),
+        marker=dict(size=node["size"], color=color, opacity=0.9,
+                    line=dict(width=2, color='rgba(255,255,255,0.6)')),
         text=[node["id"]],
         textposition="top center",
         textfont=dict(size=10, color=t['text_primary']),

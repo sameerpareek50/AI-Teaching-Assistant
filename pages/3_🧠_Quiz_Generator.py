@@ -35,7 +35,7 @@ PAGE_CSS = get_common_css(t) + f"""
     }}
     .score-card {{
         background: {t['card_gradient']};
-        border: 1px solid rgba(102,126,234,0.3); border-radius: 18px;
+        border: 1px solid rgba(59,130,246,0.3); border-radius: 18px;
         padding: 2rem; text-align: center; margin: 1.5rem 0;
     }}
     .score-value {{
@@ -45,8 +45,8 @@ PAGE_CSS = get_common_css(t) + f"""
     }}
     .score-label {{ color: {t['text_secondary']}; font-size: 1rem; margin-top: 0.5rem; }}
     .adaptive-banner {{
-        background: linear-gradient(135deg, rgba(240,147,251,0.1), rgba(102,126,234,0.1));
-        border: 1px solid rgba(240,147,251,0.2); border-radius: 14px;
+        background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(29,78,216,0.08));
+        border: 1px solid rgba(59,130,246,0.2); border-radius: 14px;
         padding: 1rem 1.5rem; margin: 1rem 0; text-align: center;
     }}
     .difficulty-badge {{
@@ -67,24 +67,22 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']};">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">ADAPTIVE QUIZ</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">ADAPTIVE QUIZ</div>
     </div>
     """, unsafe_allow_html=True)
 
     # Show learner stats in sidebar
     if profile["total_quizzes"] > 0:
         overall_pct = profile["total_correct"] / profile["total_questions"] * 100 if profile["total_questions"] > 0 else 0
-        st.markdown("## Your Stats")
-        st.markdown(f"**Quizzes taken:** {profile['total_quizzes']}")
-        st.markdown(f"**Overall accuracy:** {overall_pct:.0f}%")
-        st.markdown(f"**Adaptive level:** {profile['current_difficulty']}")
+        st.markdown('<div style="color:#e2eeff; font-size:1rem; font-weight:700; margin-bottom:0.5rem;">Your Stats</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="color:#b8d4f0; font-size:0.85rem; line-height:1.8;">Quizzes taken: <strong style="color:#e2eeff;">{profile["total_quizzes"]}</strong><br>Overall accuracy: <strong style="color:#e2eeff;">{overall_pct:.0f}%</strong><br>Adaptive level: <strong style="color:#e2eeff;">{profile["current_difficulty"]}</strong></div>', unsafe_allow_html=True)
 
         weak = get_weak_topics(profile, top_n=3)
         if weak:
-            st.markdown("**Weak areas:**")
+            st.markdown('<div style="color:#e2eeff; font-size:0.9rem; font-weight:600; margin-top:0.6rem;">Weak areas:</div>', unsafe_allow_html=True)
             for w in weak:
-                st.markdown(f"- {w['topic']} ({w['accuracy']:.0%})")
+                st.markdown(f'<div style="color:#b8d4f0; font-size:0.85rem;">— {w["topic"]} ({w["accuracy"]:.0%})</div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="page-header">
@@ -122,7 +120,7 @@ diff_class = {"Easy": "diff-easy", "Medium": "diff-medium", "Hard": "diff-hard"}
 if profile["total_quizzes"] > 0:
     st.markdown(f"""
     <div class="adaptive-banner">
-        <span style="color:{t['text_sidebar']}; font-size:0.9rem;">Adaptive difficulty: </span>
+        <span style="color:{t['text_secondary']}; font-size:0.9rem;">Adaptive difficulty:</span>
         <span class="difficulty-badge {diff_class}">{diff}</span>
         <span style="color:{t['text_muted']}; font-size:0.8rem; margin-left:0.5rem;">
             (based on your last {min(3, len(profile['quiz_history']))} quiz results)
@@ -234,7 +232,15 @@ Output valid JSON only, no markdown."""
             if text.startswith("```"):
                 text = re.sub(r'^```\w*\n?', '', text)
                 text = re.sub(r'\n?```$', '', text)
-            st.session_state.quiz_data = json.loads(text)
+            try:
+                st.session_state.quiz_data = json.loads(text)
+            except json.JSONDecodeError:
+                # LLM added preamble text or the array is embedded — extract it
+                match = re.search(r'\[.*\]', text, re.DOTALL)
+                if match:
+                    st.session_state.quiz_data = json.loads(match.group())
+                else:
+                    raise
             st.rerun()
         except Exception as e:
             st.error(f"Failed to generate quiz: {e}")
@@ -319,7 +325,7 @@ if st.session_state.quiz_data:
             new_class = {"Easy": "diff-easy", "Medium": "diff-medium", "Hard": "diff-hard"}[new_diff]
             st.markdown(f"""
             <div class="adaptive-banner">
-                <span style="color:{t['text_sidebar']};">Difficulty {direction}: </span>
+                <span style="color:{t['text_secondary']};">Difficulty {direction}:</span>
                 <span class="difficulty-badge {new_class}">{new_diff}</span>
                 <span style="color:{t['text_muted']}; font-size:0.8rem; margin-left:0.5rem;">
                     (next quiz will adapt to this level)

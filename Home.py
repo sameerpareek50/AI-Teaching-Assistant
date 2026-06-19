@@ -7,7 +7,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(__file__))
 from learner_profile import load_profile, get_weak_topics, get_learner_summary_for_prompt
-from gemini_helper import generate as gemini_generate, get_client
+from gemini_helper import generate as gemini_generate
 from theme import get_theme, get_common_css
 
 # --- Configuration ---
@@ -31,42 +31,108 @@ st.markdown(get_common_css(t) + f"""
 <style>
     [data-testid="stToolbarActions"] {{ display: none !important; }}
 
+    .hero-banner {{
+        position: relative;
+        background: linear-gradient(135deg, #eef2ff 0%, #f0f5ff 50%, #e8eefe 100%);
+        border: 1px solid rgba(29,78,216,0.1);
+        border-radius: 24px;
+        overflow: hidden;
+        margin-bottom: 1.8rem;
+        animation: fadeIn 0.7s ease;
+    }}
+    .hero-banner::before {{
+        content: '';
+        position: absolute;
+        width: 420px; height: 420px;
+        background: radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 65%);
+        top: -140px; left: -120px;
+        pointer-events: none;
+    }}
+    .hero-banner::after {{
+        content: '';
+        position: absolute;
+        width: 320px; height: 320px;
+        background: radial-gradient(circle, rgba(29,78,216,0.14) 0%, transparent 65%);
+        bottom: -100px; right: -90px;
+        pointer-events: none;
+    }}
+    .hero-dots {{
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(29,78,216,0.07) 1.5px, transparent 1.5px);
+        background-size: 28px 28px;
+        pointer-events: none;
+    }}
     .welcome-container {{
         text-align: center;
-        padding: 5rem 1rem 2rem;
-        animation: fadeIn 0.7s ease;
+        padding: 4rem 1rem 3rem;
+        position: relative;
+        z-index: 1;
     }}
     @keyframes fadeIn {{
         from {{ opacity: 0; transform: translateY(-12px); }}
         to {{ opacity: 1; transform: translateY(0); }}
     }}
+    @keyframes fadeInUp {{
+        from {{ opacity: 0; transform: translateY(16px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
     .welcome-icon {{ font-size: 3.5rem; display: block; margin-bottom: 1.2rem; }}
     .welcome-title {{
         font-size: 3.4rem; font-weight: 800; letter-spacing: 3px;
-        background: linear-gradient(135deg, {t['accent']} 0%, {t['accent2']} 50%, #f093fb 100%);
+        background: linear-gradient(135deg, {t['accent']} 0%, #2563eb 60%, #3b82f6 100%);
         -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         margin-bottom: 0.6rem;
     }}
     .welcome-tagline {{
-        font-size: 1rem; color: {t['text_secondary']}; font-weight: 300;
-        letter-spacing: 0.5px; margin-bottom: 2.8rem;
+        font-size: 1rem; color: {t['text_secondary']}; font-weight: 400;
+        letter-spacing: 0.5px; margin-bottom: 0;
+    }}
+
+    .feature-cards {{
+        display: flex; gap: 1.2rem; justify-content: center;
+        margin: 2.5rem 0 2rem;
+        animation: fadeInUp 0.7s ease 0.2s both;
+    }}
+    .feature-card {{
+        background: #ffffff;
+        border: 1px solid rgba(29,78,216,0.1);
+        border-radius: 18px; padding: 1.6rem 1.4rem;
+        text-align: center; flex: 1; max-width: 220px;
+        box-shadow: 0 2px 12px rgba(29,78,216,0.06);
+        transition: all 0.25s ease;
+        cursor: default;
+    }}
+    .feature-card:hover {{
+        transform: translateY(-5px);
+        box-shadow: 0 10px 28px rgba(29,78,216,0.12);
+        border-color: rgba(29,78,216,0.22);
+    }}
+    .feature-card-icon {{ font-size: 2rem; margin-bottom: 0.8rem; display: block; }}
+    .feature-card-title {{
+        font-size: 0.9rem; font-weight: 700;
+        color: {t['text_heading']}; margin-bottom: 0.45rem;
+    }}
+    .feature-card-desc {{
+        font-size: 0.78rem; color: {t['text_secondary']}; line-height: 1.55;
     }}
     .source-card {{
-        background: {t['card_gradient']};
-        border: 1px solid rgba(102,126,234,0.2); padding: 1rem 1.3rem;
+        background: {t['bg_card']};
+        border: 1px solid {t['border_card']}; padding: 1rem 1.3rem;
         border-radius: 14px; margin: 0.6rem 0; transition: all 0.3s ease;
+        box-shadow: 0 1px 4px rgba(29,78,216,0.06);
     }}
     .source-card:hover {{
-        border-color: rgba(102,126,234,0.4); transform: translateX(4px);
-        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
+        border-color: rgba(29,78,216,0.3); transform: translateX(4px);
+        box-shadow: 0 4px 16px rgba(29,78,216,0.1);
     }}
     .source-card h4 {{ color: {t['text_heading']} !important; margin: 0 0 0.4rem 0; font-size: 0.95rem; font-weight: 600; }}
     .source-card p {{ color: {t['text_explanation']} !important; margin: 0.2rem 0; font-size: 0.85rem; line-height: 1.5; }}
 
     .badge {{
-        background: {t['code_bg']}; border: 1px solid rgba(102,126,234,0.3);
+        background: {t['code_bg']}; border: 1px solid rgba(29,78,216,0.2);
         padding: 3px 12px; border-radius: 20px; font-size: 0.78rem;
-        color: {t['text_heading']}; display: inline-block; margin: 0.4rem 0.3rem 0 0;
+        color: {t['accent']}; display: inline-block; margin: 0.4rem 0.3rem 0 0;
     }}
     .badge-green {{
         background: {t['success_bg']}; border-color: {t['success_border']}; color: {t['success']};
@@ -80,12 +146,13 @@ st.markdown(get_common_css(t) + f"""
         border-radius: 10px; padding: 0.5rem 1rem;
         display: flex; gap: 1.5rem; justify-content: center;
         margin-top: 0.5rem; font-size: 0.78rem; color: {t['text_muted']};
+        box-shadow: 0 1px 4px rgba(29,78,216,0.05);
     }}
     .perf-item {{ display: flex; align-items: center; gap: 0.4rem; }}
     .perf-dot {{ width: 6px; height: 6px; border-radius: 50%; display: inline-block; }}
     .dot-green {{ background: {t['success']}; }}
     .dot-blue {{ background: {t['accent']}; }}
-    .dot-purple {{ background: #b794f4; }}
+    .dot-teal {{ background: #0ea5e9; }}
 
     @keyframes pulse {{
         0% {{ opacity: 1; }} 50% {{ opacity: 0.4; }} 100% {{ opacity: 1; }}
@@ -163,19 +230,21 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']}; letter-spacing:1px;">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">AI TEACHING ASSISTANT</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff; letter-spacing:1px;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">AI TEACHING ASSISTANT</div>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    st.markdown("## How it works")
     st.markdown("""
-    1. Your question → vector embedding
-    2. Semantic search finds relevant chunks
-    3. LLM generates answer with references
-    """)
+    <div style="color:#e2eeff; font-size:1rem; font-weight:700; margin-bottom:0.6rem;">How it works</div>
+    <div style="color:#b8d4f0; font-size:0.85rem; line-height:1.9;">
+        <div style="color:#b8d4f0; margin-bottom:0.3rem;">1. Your question → vector embedding</div>
+        <div style="color:#b8d4f0; margin-bottom:0.3rem;">2. Semantic search finds relevant chunks</div>
+        <div style="color:#b8d4f0;">3. LLM generates answer with references</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -184,14 +253,14 @@ with st.sidebar:
     if profile["total_quizzes"] > 0:
         weak = get_weak_topics(profile, top_n=3)
         if weak:
-            st.markdown("## Suggested for You")
-            st.markdown("*Based on your quiz performance:*")
+            st.markdown('<div style="color:#e2eeff; font-size:1rem; font-weight:700; margin-bottom:0.5rem;">Suggested for You</div>', unsafe_allow_html=True)
+            st.markdown('<div style="color:#7aa8cc; font-size:0.8rem; margin-bottom:0.4rem;"><em>Based on your quiz performance:</em></div>', unsafe_allow_html=True)
             for w in weak:
-                st.markdown(f"- Ask about **{w['topic']}** ({w['accuracy']:.0%})")
+                st.markdown(f'<div style="color:#b8d4f0; font-size:0.85rem; margin:0.2rem 0;">— Ask about <strong style="color:#e2eeff;">{w["topic"]}</strong> ({w["accuracy"]:.0%})</div>', unsafe_allow_html=True)
 
     st.markdown("---")
 
-    st.markdown("## Settings")
+    st.markdown('<div style="color:#e2eeff; font-size:1rem; font-weight:700; margin-bottom:0.5rem;">Settings</div>', unsafe_allow_html=True)
     top_k = st.slider("Chunks to retrieve", 1, 10, TOP_K)
     show_sources = st.checkbox("Show source chunks", value=True)
 
@@ -230,12 +299,42 @@ suggestion_clicked = None
 
 # Welcome header — always visible, sits above chat history
 st.markdown("""
-<div class="welcome-container">
-    <span class="welcome-icon">🎓</span>
-    <div class="welcome-title">VIDEX</div>
-    <div class="welcome-tagline">Ask anything about your course videos</div>
+<div class="hero-banner">
+    <div class="hero-dots"></div>
+    <div class="welcome-container">
+        <span class="welcome-icon">🎓</span>
+        <div class="welcome-title">VIDEX</div>
+        <div class="welcome-tagline">Ask anything about your course videos</div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
+
+# Feature cards — only shown on empty chat
+if not st.session_state.get("messages"):
+    st.markdown(f"""
+    <div class="feature-cards">
+        <div class="feature-card">
+            <span class="feature-card-icon">🔍</span>
+            <div class="feature-card-title">Search & Ask</div>
+            <div class="feature-card-desc">Ask questions across all indexed videos and get timestamped answers</div>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-icon">🧠</span>
+            <div class="feature-card-title">Adaptive Quizzes</div>
+            <div class="feature-card-desc">Test your knowledge with quizzes that adjust to your performance</div>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-icon">📝</span>
+            <div class="feature-card-title">Smart Notes</div>
+            <div class="feature-card-desc">Auto-generate structured study notes from any course video</div>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-icon">🕸️</span>
+            <div class="feature-card-title">Knowledge Graph</div>
+            <div class="feature-card-desc">Visualise how topics connect across all your videos</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # --- Chat Interface ---
 if "messages" not in st.session_state:

@@ -41,9 +41,9 @@ st.markdown(get_common_css(t) + f"""
     }}
 
     .video-item:hover {{
-        border-color: rgba(102,126,234,0.3);
+        border-color: rgba(59,130,246,0.3);
         transform: translateX(6px);
-        box-shadow: 0 4px 20px rgba(102,126,234,0.1);
+        box-shadow: 0 4px 20px rgba(59,130,246,0.1);
     }}
 
     .video-number {{
@@ -75,7 +75,7 @@ st.markdown(get_common_css(t) + f"""
 
     .video-badge {{
         background: {t['code_bg']};
-        border: 1px solid rgba(102,126,234,0.25);
+        border: 1px solid rgba(59,130,246,0.25);
         padding: 2px 10px;
         border-radius: 20px;
         font-size: 0.75rem;
@@ -108,8 +108,8 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']};">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">VIDEO LIBRARY</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">VIDEO LIBRARY</div>
     </div>
     """, unsafe_allow_html=True)
 

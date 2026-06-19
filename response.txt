@@ -1,9 +1,0 @@
-In your Sigma web development course, CSS is introduced in several videos.
-
-The first introduction of CSS is in video 14, where it's mentioned that "So, what is CSS?" (this starts at timestamp 257.6 seconds and ends at 259.6 seconds).
-
-Additionally, the basics of how CSS is written are also covered in video 14 itself, starting from 48.52 seconds to 50.16 seconds.
-
-Lastly, there's a mention that we will learn styling from CSS, but I couldn't pinpoint an exact timestamp for this information as it seems like a brief mention without specific details.
-
-For more in-depth knowledge about CSS and how it applies to web development, you can check out these videos again, or consider exploring other resources related to the topic.

@@ -32,7 +32,7 @@ st.markdown(get_common_css(t) + f"""
     .topic-row {{
         display: flex; align-items: center; gap: 1rem; margin: 0.6rem 0;
     }}
-    .topic-name {{ color: {t['text_sidebar']}; font-size: 0.9rem; min-width: 200px; }}
+    .topic-name {{ color: {t['text_primary']}; font-size: 0.9rem; min-width: 200px; }}
     .topic-bar-bg {{
         flex: 1; height: 8px; background: {t['bg_card_hover']};
         border-radius: 4px; overflow: hidden;
@@ -50,7 +50,7 @@ st.markdown(get_common_css(t) + f"""
         display: flex; justify-content: space-between; align-items: center;
         padding: 0.6rem 0; border-bottom: 1px solid {t['border_card']};
     }}
-    .history-topic {{ color: {t['text_sidebar']}; font-size: 0.9rem; }}
+    .history-topic {{ color: {t['text_primary']}; font-size: 0.9rem; }}
     .history-score {{ font-weight: 600; font-size: 0.9rem; }}
     .history-date {{ color: {t['text_muted']}; font-size: 0.75rem; }}
     .recommendation-card {{
@@ -65,8 +65,8 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']};">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">LEARNER PROGRESS</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">LEARNER PROGRESS</div>
     </div>
     """, unsafe_allow_html=True)
 

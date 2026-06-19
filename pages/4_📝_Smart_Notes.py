@@ -27,7 +27,7 @@ st.markdown(f"""
         padding-bottom: 0.5rem;
     }}
     .notes-container strong {{ color: {t['text_heading']}; }}
-    .notes-container li {{ color: {t['text_sidebar']}; margin: 0.3rem 0; }}
+    .notes-container li {{ color: {t['text_primary']}; margin: 0.3rem 0; }}
     .notes-container code {{
         background: {t['code_bg']}; padding: 2px 6px;
         border-radius: 4px; color: {t['text_heading']}; font-size: 0.9rem;
@@ -45,18 +45,18 @@ with st.sidebar:
     st.markdown(f"""
     <div style="text-align:center; padding: 1rem 0;">
         <div style="font-size:2rem;">🎓</div>
-        <div style="font-size:1.1rem; font-weight:700; color:{t['text_heading']};">VIDEX</div>
-        <div style="font-size:0.7rem; color:{t['text_muted']}; letter-spacing:2px;">SMART NOTES</div>
+        <div style="font-size:1.1rem; font-weight:700; color:#ffffff;">VIDEX</div>
+        <div style="font-size:0.7rem; color:#7aa8cc; letter-spacing:2px;">SMART NOTES</div>
     </div>
     """, unsafe_allow_html=True)
 
     if profile["total_quizzes"] > 0:
         weak = get_weak_topics(profile, top_n=3)
         if weak:
-            st.markdown("## Your Weak Areas")
+            st.markdown('<div style="color:#e2eeff; font-size:1rem; font-weight:700; margin-bottom:0.5rem;">Your Weak Areas</div>', unsafe_allow_html=True)
             for w in weak:
-                st.markdown(f"- {w['topic']} ({w['accuracy']:.0%})")
-            st.markdown("*Use 'Focus on Weak Areas' note style to target these.*")
+                st.markdown(f'<div style="color:#b8d4f0; font-size:0.85rem;">— {w["topic"]} ({w["accuracy"]:.0%})</div>', unsafe_allow_html=True)
+            st.markdown('<div style="color:#7aa8cc; font-size:0.78rem; margin-top:0.4rem;"><em>Use \'Focus on Weak Areas\' note style to target these.</em></div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="page-header">
